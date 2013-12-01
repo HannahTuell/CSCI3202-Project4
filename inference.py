@@ -161,8 +161,12 @@ class ExactInference(InferenceModule):
         for p in self.legalPositions:
             trueDistance = util.manhattanDistance(p, pacmanPosition)
             if emissionModel[trueDistance] > 0: 
+                # this will perform the calculation needed to update the 
+                # belief distribution.
                 allPossible[p] = emissionModel[trueDistance] * self.beliefs[p]
 
+        # this will be true when a ghost is captured by Pacman, in which case we 
+        # update the beliefs so the ghost appears in its prison cell.
         if noisyDistance == None:
             allPossible = util.Counter()
             allPossible[self.getJailPosition()] = 1
@@ -222,12 +226,19 @@ class ExactInference(InferenceModule):
 
         "*** YOUR CODE HERE ***"
         allPossible = util.Counter()
-        for p in self.legalPositions:
-            newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, p))
+        for oldPos in self.legalPositions:
+            # obtain distribution over new positions for the ghost, given its previous position
+            # (oldPos) as well as Pacman's current position (gameState).
+            newPosDist = self.getPositionDistribution(self.setGhostPosition(gameState, oldPos))
+            # now go through the newPosDist util.Counter object created above and update based
+            # on the beliefs of the old position and the associated probability.
             for newPos, prob in newPosDist.items():
-                allPossible[newPos] += self.beliefs[p] * prob
+                allPossible[newPos] += self.beliefs[oldPos] * prob
+        # update the beliefs and normalize them.
         self.beliefs = allPossible
         self.beliefs.normalize()
+        "*** END YOUR CODE HERE ***"
+
         
     def getBeliefDistribution(self):
         return self.beliefs
