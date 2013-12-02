@@ -275,6 +275,17 @@ class ParticleFilter(InferenceModule):
             and will produce errors
         """
         "*** YOUR CODE HERE ***"
+        # initialize a LIST in which to store the particles
+        self.particles = list()
+        totalParticles = self.numParticles
+        # while there are particles left, step through all the possible legal positions
+        # and uniformly distribute the list of positions of particles 
+        while totalParticles > 0:
+            for p in self.legalPositions:
+                self.particles.append(p)
+                totalParticles -= 1
+        "*** END YOUR CODE HERE ***"
+
 
     def observe(self, observation, gameState):
         """
@@ -308,8 +319,39 @@ class ParticleFilter(InferenceModule):
         noisyDistance = observation
         emissionModel = busters.getObservationDistribution(noisyDistance)
         pacmanPosition = gameState.getPacmanPosition()
+        
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        newBeliefs = util.Counter()
+        beliefs = self.getBeliefDistribution()
+        
+        # go through all the legal positions and calculate their manhattan distance
+        # to pacman's position
+        for p in self.legalPositions:
+            distance = util.manhattanDistance(p, pacmanPosition)
+            # if the probability of that distance is greater than zero, than recalculate
+            # the new beliefs as accounting for that probability
+            if emissionModel[distance] > 0:
+                newBeliefs[p] = emissionModel[distance] * beliefs[p]
+        newBeliefs.normalize()
+                   
+        # Special Case #2
+        # when all the particles have a weight of 0, we reinitialize
+        if newBeliefs.totalCount() == 0:
+            self.initializeUniformly(self.numParticles)
+        # if this is not the case, append a sample from a belief distribution
+        else:
+            self.particles = []
+            for i in range(0, self.numParticles):
+                self.particles.append(util.sampleFromCounter(newBeliefs))
+        
+        # Special Case #1
+        # this will handle the case when pacman captures a ghost, it will update the
+        # particles to reflect this change
+        if noisyDistance == None:
+            self.particles = list()
+            for i in range(0, self.numParticles):
+                self.particles.append(self.getJailPosition())   
+        "*** END YOUR CODE HERE ***"
 
     def elapseTime(self, gameState):
         """
@@ -336,7 +378,13 @@ class ParticleFilter(InferenceModule):
           essentially converts a list of particles into a belief distribution (a Counter object)
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        new_particles = util.Counter()
+        for p in self.particles:
+         new_particles[p] += 1
+        
+        new_particles.normalize()
+        return new_particles
+        "*** END YOUR CODE HERE ***"
 
 class MarginalInference(InferenceModule):
     "A wrapper around the JointInference module that returns marginal beliefs about ghosts."
